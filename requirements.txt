@@ -2,4 +2,3 @@ discord
 python-dotenv
 requests
 CodeforcesApiPy
-python-leetcode
