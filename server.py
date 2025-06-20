@@ -58,9 +58,21 @@ def get_recent_problem_codeforces(handle):
 
         recent_problem = response.json()['result'][0]
     
+        if 'contestId' in recent_problem['problem']:
+            contest_id = recent_problem['problem']['contestId']
+            if contest_id >= 100000:  # gym problem
+                problem_url = f"https://codeforces.com/gym/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
+            else:
+                problem_url = f"https://codeforces.com/contest/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
+        elif 'problemsetName' in recent_problem['problem']:
+            problem_url = f"https://codeforces.com/problemsets/{recent_problem['problem']['problemsetName']}/problem/99999/{recent_problem['problem']['index']}"
+        else:
+            problem_url = None
+
         return Problem(name = recent_problem['problem']['name'],
                       timestamp = recent_problem['creationTimeSeconds'],
                       ac = recent_problem['verdict'] == 'OK',
+                      url = problem_url,
                       grader='codeforces')
     except Exception as e:
         print(e)
@@ -100,6 +112,7 @@ def get_recent_problem_leetcode(handle):
         return Problem(name = response['title'],
                        timestamp = response['timestamp'],
                        ac = response['statusDisplay'] == 'Accepted',
+                       url = f"https://leetcode.com/problems/{response['titleSlug']}/",
                        grader='leetcode')
     except Exception as e:
         print(e)
@@ -169,11 +182,15 @@ async def read_last_problem_loop():
                     ICPC_BOT_CHANNEL = await client.fetch_channel(os.getenv('ICPC_BOT_CHANNEL'))
 
                 if ICPC_BOT_CHANNEL:
-                    if get_clist_info(problem) and problem.rating and problem.url:
+                    if not problem.rating or not problem.url:
+                        get_clist_info(problem)
+                    problem_text = problem.name
+                    if problem.rating:
                         lc_rating = rating_cf_to_lc(problem.rating)
-                        await ICPC_BOT_CHANNEL.send(f'<@{handle_to_user[grader][handle]}> solved [{problem.name} (difficulty: {problem.rating}/{lc_rating})]({problem.url}) on {grader}!')
-                    else:
-                        await ICPC_BOT_CHANNEL.send(f'<@{handle_to_user[grader][handle]}> solved {problem.name} on {grader}!')
+                        problem_text = f'{problem_text} (difficulty: {problem.rating}/{lc_rating})'
+                    if problem.url:
+                        problem_text = f'[{problem_text}]({problem.url})'
+                    await ICPC_BOT_CHANNEL.send(f'<@{handle_to_user[grader][handle]}> solved {problem_text} on {grader}!')
     except Exception as e:
         if not ADMIN_USER:
             ADMIN_USER = await client.fetch_user(os.getenv('ADMIN_USER'))
