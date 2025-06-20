@@ -59,7 +59,11 @@ def get_recent_problem_codeforces(handle):
         recent_problem = response.json()['result'][0]
     
         if 'contestId' in recent_problem['problem']:
-            problem_url = f"https://codeforces.com/contest/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
+            contest_id = recent_problem['problem']['contestId']
+            if contest_id >= 100000:  # gym problem
+                problem_url = f"https://codeforces.com/gym/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
+            else:
+                problem_url = f"https://codeforces.com/contest/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
         elif 'problemsetName' in recent_problem['problem']:
             problem_url = f"https://codeforces.com/problemsets/{recent_problem['problem']['problemsetName']}/problem/99999/{recent_problem['problem']['index']}"
         else:
