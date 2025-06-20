@@ -58,10 +58,17 @@ def get_recent_problem_codeforces(handle):
 
         recent_problem = response.json()['result'][0]
     
+        if 'contestId' in recent_problem['problem']:
+            problem_url = f"https://codeforces.com/contest/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
+        elif 'problemsetName' in recent_problem['problem']:
+            problem_url = f"https://codeforces.com/problemsets/{recent_problem['problem']['problemsetName']}/problem/99999/{recent_problem['problem']['index']}"
+        else:
+            problem_url = None
+
         return Problem(name = recent_problem['problem']['name'],
                       timestamp = recent_problem['creationTimeSeconds'],
                       ac = recent_problem['verdict'] == 'OK',
-                      url = f"https://codeforces.com/contest/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}",
+                      url = problem_url,
                       grader='codeforces')
     except Exception as e:
         print(e)
