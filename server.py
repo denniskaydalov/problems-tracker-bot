@@ -8,11 +8,8 @@ from api import get_recent_problem_codeforces, get_recent_problem_leetcode, get_
 
 load_dotenv()
 
-intents = discord.Intents.default()
-intents.message_content = True
-
 bot = commands.Bot(command_prefix='$', 
-                   intents=intents, 
+                   intents=intents=discord.Intents.all(), 
                    help_command=commands.DefaultHelpCommand(no_category = 'Commands'))
 
 def save_pickle(obj, filepath):
@@ -46,6 +43,10 @@ async def connect(ctx,
     '''
 
     if grader == "codeforces" or grader == "leetcode":
+        if ' ' in handle:
+            await ctx.send(f'Handle cannot have spaces')
+            return
+            
         saved_last_problems[grader] = saved_last_problems.get(grader, {})
         saved_last_problems[grader][handle] = get_recent_problem(handle, grader)
 
