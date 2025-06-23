@@ -51,7 +51,7 @@ async def connect(ctx,
         saved_last_problems[grader][handle] = get_recent_problem(handle, grader)
 
         handle_to_user[grader] = handle_to_user.get(grader, {})
-        handle_to_user[grader][handle] = message.author.id
+        handle_to_user[grader][handle] = ctx.author.id
 
         available_handles.append(handle)
 
