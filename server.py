@@ -8,7 +8,7 @@ from api import get_recent_problem_codeforces, get_recent_problem_leetcode, get_
 
 load_dotenv()
 
-bot = commands.Bot(command_prefix='$', 
+bot = commands.Bot(command_prefix='!', 
                    intents=intents=discord.Intents.all(), 
                    help_command=commands.DefaultHelpCommand(no_category = 'Commands'))
 
