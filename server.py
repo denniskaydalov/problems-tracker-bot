@@ -101,7 +101,7 @@ def recent_problem_update(handle, grader):
 
     last_problem = get_recent_problem(handle, grader)
 
-    if last_problem and last_problem.timestamp != saved_last_problems[grader][handle].timestamp and last_problem.ac:
+    if last_problem and last_problem.name != saved_last_problems[grader][handle].name and last_problem.ac:
         saved_last_problems[grader] = saved_last_problems.get(grader, {})
         saved_last_problems[grader][handle] = last_problem
         update = last_problem
