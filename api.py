@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import requests
 import os
+from typing import Literal
 
 @dataclass
 class Problem:
@@ -113,3 +114,16 @@ def rating_lc_to_cf(rating):
             1700 if rating == 'Hard' else
             2000 if rating == 'Hard+' else
             2000 + (200 * rating.count('+')) - 200)
+
+def get_profile_url(grader: Literal['codeforces', 'leetcode'], handle: str) -> str:
+    if handle is None or handle == '':
+        return ''
+
+    match grader:
+        case 'codeforces':
+            return f'https://codeforces.com/profile/{handle}'
+        case 'leetcode':
+            return f'https://leetcode.com/u/{handle}/'
+        case _:
+            return ''
+

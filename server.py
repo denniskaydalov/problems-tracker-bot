@@ -4,7 +4,7 @@ import os
 import pickle
 from dotenv import load_dotenv
 from discord.ext import tasks, commands
-from api import get_recent_problem_codeforces, get_recent_problem_leetcode, get_clist_info, Problem
+from api import get_recent_problem_codeforces, get_recent_problem_leetcode, get_clist_info, get_profile_url, Problem
 
 load_dotenv()
 
@@ -145,7 +145,9 @@ async def read_last_problem_loop():
                 if problem.url:
                     problem_text = f'[{problem_text}]({problem.url})'
 
-                await bot.icpc_bot_channel.send(f'<@{handle_to_user[grader][handle]}> solved {problem_text} on {grader}!')
+                handle_text = f'([{handle}]({handle_url}))' if (handle_url := get_profile_url(grader, handle)) else f'({handle})'
+
+                await bot.icpc_bot_channel.send(f'<@{handle_to_user[grader][handle]}> {handle_text} solved {problem_text} on {grader}!')
     except Exception as e:
         await bot.admin_user.send(str(e)) # :(
 
