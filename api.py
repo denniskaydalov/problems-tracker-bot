@@ -11,39 +11,41 @@ class Problem:
     url : str = None
     rating : int = None
 
-def get_recent_problem_codeforces(handle):
+def get_recent_problem_codeforces(handle, count):
     URL = 'https://codeforces.com/api/user.status'
     params = { 'handle':handle,
                'from':1,
-               'count':1 }
+               'count':count }
     try:
         print('getting_request codeforces', handle)
         response = requests.get(url = URL, params = params, timeout=10)
         print('got request codeforces', handle, response.json())
 
-        recent_problem = response.json()['result']
+        recent_problems = response.json()['result']
 
-        if not recent_problem:
+        if not recent_problems:
             return None
         
-        recent_problem = recent_problem[0]
-    
-        if 'contestId' in recent_problem['problem']:
-            contest_id = recent_problem['problem']['contestId']
-            if contest_id >= 100000:  # gym problem
-                problem_url = f"https://codeforces.com/gym/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
+        problems = []
+        for problem in recent_problems:
+            if 'contestId' in problem['problem']:
+                contest_id = problem['problem']['contestId']
+                if contest_id >= 100000:  # gym problem
+                    problem_url = f"https://codeforces.com/gym/{problem['problem']['contestId']}/problem/{problem['problem']['index']}"
+                else:
+                    problem_url = f"https://codeforces.com/contest/{problem['problem']['contestId']}/problem/{problem['problem']['index']}"
+            elif 'problemsetName' in problem['problem']:
+                problem_url = f"https://codeforces.com/problemsets/{problem['problem']['problemsetName']}/problem/99999/{problem['problem']['index']}"
             else:
-                problem_url = f"https://codeforces.com/contest/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
-        elif 'problemsetName' in recent_problem['problem']:
-            problem_url = f"https://codeforces.com/problemsets/{recent_problem['problem']['problemsetName']}/problem/99999/{recent_problem['problem']['index']}"
-        else:
-            problem_url = None
+                problem_url = None
 
-        return Problem(name = recent_problem['problem']['name'],
-                      timestamp = recent_problem['creationTimeSeconds'],
-                      ac = recent_problem['verdict'] == 'OK',
-                      url = problem_url,
-                      grader='codeforces')
+            problems.append(Problem(name = problem['problem']['name'],
+                          timestamp = problem['creationTimeSeconds'],
+                          ac = problem['verdict'] == 'OK',
+                          url = problem_url,
+                          grader='codeforces'))
+
+        return problems
     except Exception as e:
         print(e)
         return None
@@ -79,24 +81,38 @@ def get_clist_info(problem):
 
         return None
 
-def get_recent_problem_leetcode(handle):
-    URL = f'https://leetcode-api-pied.vercel.app/user/{handle}/submissions'
+def get_recent_problem_leetcode(handle, count):
+    URL="https://leetcode.com/graphql"
+    QUERY="""
+        {
+          recentAcSubmissionList(username: "{0}", limit: {1}) {
+            title
+            titleSlug
+            timestamp
+            statusDisplay
+            lang
+          }
+        }
+    """.format(handle, count)
 
     try:
         print('getting_request leetcode', handle)
-        response = requests.get(url = URL, params = {'limit': 1}, timeout=10).json()
-        print('got request leetcode', handle, response)
+        responses = requests.get(url = URL, json={"query": QUERY}, timeout=10).json()['data']['recentAcSubmissionList']
+        print('got request leetcode', handle, responses)
 
-        if not response:
+        if not responses:
             return None
 
-        response = response[0]
+        problems = []
 
-        return Problem(name = response['title'],
-                       timestamp = response['timestamp'],
-                       ac = response['statusDisplay'] == 'Accepted',
-                       url = f"https://leetcode.com/problems/{response['titleSlug']}/",
-                       grader='leetcode')
+        for problem in responses:
+            problems.append(Problem(name = problem['title'],
+                           timestamp = problem['timestamp'],
+                           ac = problem['statusDisplay'] == 'Accepted',
+                           url = f"https://leetcode.com/problems/{problem['titleSlug']}/",
+                           grader='leetcode'))
+
+        return problems
     except Exception as e:
         print(e)
         return None
