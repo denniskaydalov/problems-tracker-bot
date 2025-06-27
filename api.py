@@ -9,7 +9,8 @@ class Problem:
     ac : bool
     grader : str
     url : str = None
-    rating : int = None
+    rating_grader : str = None
+    rating_clist : int = None
 
 def get_recent_problem_codeforces(handle, count):
     URL = 'https://codeforces.com/api/user.status'
@@ -43,7 +44,8 @@ def get_recent_problem_codeforces(handle, count):
                           timestamp = problem['creationTimeSeconds'],
                           ac = problem['verdict'] == 'OK',
                           url = problem_url,
-                          grader='codeforces'))
+                          grader='codeforces',
+                          rating_grader=problem['problem']['rating']))
 
         return problems
     except Exception as e:
@@ -81,18 +83,43 @@ def get_clist_info(problem):
 
         return None
 
+def get_problem_info_leetcode(title_slug):
+    URL="https://leetcode.com/graphql"
+    QUERY="""
+        {{
+          question(titleSlug: "{0}") {{
+              difficulty
+              topicTags {{
+                name
+                slug
+                translatedName
+            }}
+          }}
+        }}
+    """.format(title_slug)
+
+    try:
+        print('getting request for leetcode info')
+        response = requests.get(url = URL, json={"query": QUERY}, timeout=10).json()['data']['question']
+        print('got request for leetcode info', response)
+
+        return response
+    except Exception as e:
+        print(e)
+        return None
+
 def get_recent_problem_leetcode(handle, count):
     URL="https://leetcode.com/graphql"
     QUERY="""
-        {
-          recentAcSubmissionList(username: "{0}", limit: {1}) {
+        {{
+          recentAcSubmissionList(username: "{0}", limit: {1}) {{
             title
             titleSlug
             timestamp
             statusDisplay
             lang
-          }
-        }
+          }}
+        }}
     """.format(handle, count)
 
     try:
@@ -106,26 +133,65 @@ def get_recent_problem_leetcode(handle, count):
         problems = []
 
         for problem in responses:
+            problem_info = get_problem_info_leetcode(problem['titleSlug'])
+
             problems.append(Problem(name = problem['title'],
-                           timestamp = problem['timestamp'],
-                           ac = problem['statusDisplay'] == 'Accepted',
-                           url = f"https://leetcode.com/problems/{problem['titleSlug']}/",
-                           grader='leetcode'))
+                            timestamp = problem['timestamp'],
+                            ac = problem['statusDisplay'] == 'Accepted',
+                            url = f"https://leetcode.com/problems/{problem['titleSlug']}/",
+                            grader = 'leetcode',
+                            rating_grader = None or (problem_info and problem_info['difficulty'])))
 
         return problems
     except Exception as e:
         print(e)
         return None
 
-def rating_cf_to_lc(rating):
-    return (   'Easy' if rating <= 1200 else
-        'Medium' if rating <= 1700 else
-        'Hard' if rating <= 2000 else
-        'Hard' + '+' * ((rating - 2000) // 200 + 1))
+def get_recent_problems(handle, grader, count):
+    if grader == 'codeforces':
+        return get_recent_problem_codeforces(handle, count)
+    elif grader == 'leetcode':
+        return get_recent_problem_leetcode(handle, count)
 
-def rating_lc_to_cf(rating):
-    return (800 if rating == 'Easy' else
-            1200 if rating == 'Medium' else
-            1700 if rating == 'Hard' else
-            2000 if rating == 'Hard+' else
-            2000 + (200 * rating.count('+')) - 200)
+def update_recent_problems(handle, grader, count, cur, get_clist = False):
+    problems = get_recent_problems(handle, grader, count)
+
+    new_problems = []
+
+    for problem in problems:
+        existing_problem = cur.execute(f"""SELECT * FROM problems 
+                                           JOIN users ON users.user_id=problems.user_id
+                                           WHERE handle='{handle}' AND
+                                           name='{problem.name}' AND
+                                           grader='{grader}'""")
+
+        if existing_problem.fetchone() is None:
+            if get_clist:
+                get_clist_info(problem)
+
+            user_id = cur.execute(f"SELECT * FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
+
+            cur.execute(f"""INSERT INTO problems (user_id, name, timestamp)
+                          VALUES ({user_id}, '{problem.name}', {problem.timestamp})""")
+
+            if problem.rating_grader:
+                cur.execute(f"""UPDATE problems 
+                                SET rating_grader='{problem.rating_grader}'
+                                WHERE user_id={user_id} AND
+                                name='{problem.name}'""")
+
+            if problem.rating_clist:
+                cur.execute(f"""UPDATE problems 
+                                SET rating_clist={problem.rating_clist}
+                                WHERE user_id={user_id} AND
+                                name='{problem.name}'""")
+
+            if problem.url:
+                cur.execute(f"""UPDATE problems 
+                                SET url='{problem.url}'
+                                WHERE user_id={user_id} AND
+                                name='{problem.name}'""")
+
+            new_problems.append(problem)
+
+    return new_problems
