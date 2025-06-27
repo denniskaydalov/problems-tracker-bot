@@ -30,7 +30,7 @@ cur.execute("""CREATE TABLE IF NOT EXISTS problems(
                timestamp INTEGER NOT NULL,
                rating_grader TEXT,
                rating_clist INTEGER,
-               FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE) """)
+               FOREIGN KEY (user_id) REFERENCES users(user_id))""")
 
 for grader in handle_to_user:
     for handle in handle_to_user[grader]:

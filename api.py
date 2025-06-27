@@ -62,7 +62,7 @@ def get_clist_info(problem):
     try:
         print('getting_request clist')
         response = requests.get(url = URL, params = params, timeout=10)
-        print('got request clist', response)
+        print('got request clist', response.json())
 
         response = response.json()['objects']
         
@@ -71,11 +71,11 @@ def get_clist_info(problem):
 
         response = response[0]
 
-        if grader not in response['url']:
+        if (response['url'] and problem.grader not in response['url']) or (response['archive_url'] and problem.grader not in response['archive_url']):
             return None
 
         problem.url = response['archive_url'] or response['url']
-        problem.rating = response['rating']
+        problem.rating_clist = response['rating']
 
         return problem
     except Exception as e:

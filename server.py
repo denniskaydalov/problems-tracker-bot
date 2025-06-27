@@ -8,7 +8,7 @@ import sqlite3
 
 load_dotenv()
 
-bot = commands.Bot(command_prefix='$', 
+bot = commands.Bot(command_prefix='!', 
                    intents=discord.Intents.all(), 
                    help_command=commands.DefaultHelpCommand(no_category = 'Commands'))
 
@@ -33,7 +33,7 @@ async def connect(ctx,
     Connect handle from grader to get solved problem notifications
     '''
 
-    if grader == "codeforces" or grader == "leetcode":
+    if grader != "codeforces" and grader != "leetcode":
         await ctx.send(f'Must connect to codeforces or leetcode')
         return
 
@@ -43,12 +43,14 @@ async def connect(ctx,
 
     existing_users = cur.execute(f"SELECT * FROM users WHERE grader='{grader}' AND handle='{handle}'")
 
-    if exisitng_users.fetchone() is not None:
+    if existing_users.fetchone() is not None:
         await ctx.send(f'User with handle {handle} on {grader} already exists.')
+        return 
+
+    cur.execute(f"INSERT INTO users (handle, grader, discord_id) VALUES ('{handle}', '{grader}', {ctx.author.id})")
 
     update_recent_problems(handle, grader, 20, cur)
 
-    cur.execute(f"INSERT INTO users (handle, grader, discord_id) VALUES ('{handle}', '{grader}', {ctx.author.id})")
 
     await ctx.send(f'Connected {handle} on {grader}')
 
@@ -60,14 +62,15 @@ async def disconnect(ctx,
     Disconnect handle from grader from solved problem notifications
     '''
 
-    if grader == "codeforces" or grader == "leetcode":
+    if grader != "codeforces" and grader != "leetcode":
         await ctx.send(f'Must disconnect from a valid grader')
         return
 
     existing_users = cur.execute(f"SELECT * FROM users WHERE grader='{grader}' AND handle='{handle}'")
 
-    if exisitng_users.fetchone() is None:
+    if existing_users.fetchone() is None:
         await ctx.send(f'User with handle {handle} on {grader} does not exist.')
+        return
 
     cur.execute(f"""DELETE FROM users
                     WHERE grader='{grader}' AND
@@ -102,7 +105,7 @@ async def read_last_problem_loop():
             if problem.url:
                 problem_text = f'[{problem_text}]({problem.url})'
 
-            user_id = cur.execute(f"SELECT * FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
+            user_id = cur.execute(f"SELECT discord_id FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
 
             await bot.icpc_bot_channel.send(f'<@{user_id}> solved {problem_text} on {grader}!')
     except Exception as e:
