@@ -68,3 +68,9 @@ sample respones from codeforces `response.json()['result'][0]`
     "memoryConsumedBytes": <int>
 }
 ```
+
+sample response from clist
+
+```
+{'meta': {'estimated_count': None, 'limit': 100, 'next': '<str>', 'offset': 0, 'previous': None, 'total_count': None}, 'objects': [{'archive_url': 'https://leetcode.com/problems/longest-common-prefix/', 'contest_ids': None, 'divisions': [], 'favorite': False, 'id': 231481, 'kinds': [], 'n_accepted': None, 'n_attempts': None, 'n_hidden': None, 'n_partial': None, 'n_total': None, 'name': 'Longest Common Prefix', 'note': None, 'rating': 975, 'reject': False, 'resource': 'leetcode.com', 'resource_id': 102, 'short': None, 'slug': 'longest-common-prefix', 'solved': False, 'system_reject': False, 'system_solved': False, 'url': None, 'user_reject': False, 'user_solved': False, 'user_todo': False}]}
+```
