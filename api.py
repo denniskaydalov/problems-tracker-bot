@@ -158,6 +158,9 @@ def update_recent_problems(handle, grader, count, cur, get_clist = False):
 
     new_problems = []
 
+    if not problems:
+        return []
+
     for problem in problems:
         existing_problem = cur.execute(f"""SELECT * FROM problems 
                                            JOIN users ON users.user_id=problems.user_id
