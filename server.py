@@ -1,10 +1,10 @@
 import discord
 import time
 import os
-import pickle
 from dotenv import load_dotenv
 from discord.ext import tasks, commands
-from api import get_recent_problem_codeforces, get_recent_problem_leetcode, get_clist_info, Problem
+from api import update_recent_problems
+import sqlite3
 
 load_dotenv()
 
@@ -12,18 +12,8 @@ bot = commands.Bot(command_prefix='!',
                    intents=discord.Intents.all(), 
                    help_command=commands.DefaultHelpCommand(no_category = 'Commands'))
 
-def save_pickle(obj, filepath):
-    with open(filepath, 'wb') as f:
-        pickle.dump(obj, f)
-
-def load_pickle(filepath, object_default):
-    if not os.path.exists(filepath):
-        with open(filepath, 'wb') as f:
-            pickle.dump(object_default, f)
-        return object_default
-    with open(filepath, 'rb') as f:
-        obj = pickle.load(f)
-    return obj
+con = sqlite3.connect("data.sqlite3", autocommit=True)
+cur = con.cursor()
 
 @bot.event
 async def on_ready():
@@ -31,6 +21,7 @@ async def on_ready():
 
     bot.admin_user = await bot.fetch_user(os.getenv('ADMIN_USER'))
     bot.icpc_bot_channel = await bot.fetch_channel(os.getenv('ICPC_BOT_CHANNEL'))
+    bot.queries = cur.execute('SELECT handle, grader FROM users').fetchall()
 
     read_last_problem_loop.start()
 
@@ -42,25 +33,26 @@ async def connect(ctx,
     Connect handle from grader to get solved problem notifications
     '''
 
-    if grader == "codeforces" or grader == "leetcode":
-        if ' ' in handle:
-            await ctx.send(f'Handle cannot have spaces')
-            return
-            
-        saved_last_problems[grader] = saved_last_problems.get(grader, {})
-        saved_last_problems[grader][handle] = get_recent_problem(handle, grader)
-
-        handle_to_user[grader] = handle_to_user.get(grader, {})
-        handle_to_user[grader][handle] = ctx.author.id
-
-        available_handles.append(handle)
-
-        save_pickle(saved_last_problems, SAVED_LAST_PROBLEMS_PATH)
-        save_pickle(handle_to_user, HANDLE_TO_USER_PATH)
-
-        await ctx.send(f'Connected {handle} on {grader}')
-    else:
+    if grader != "codeforces" and grader != "leetcode":
         await ctx.send(f'Must connect to codeforces or leetcode')
+        return
+
+    if ' ' in handle:
+        await ctx.send(f'Handle cannot have spaces')
+        return
+
+    existing_users = cur.execute(f"SELECT * FROM users WHERE grader='{grader}' AND handle='{handle}'")
+
+    if existing_users.fetchone() is not None:
+        await ctx.send(f'User with handle {handle} on {grader} already exists.')
+        return 
+
+    cur.execute(f"INSERT INTO users (handle, grader, discord_id) VALUES ('{handle}', '{grader}', {ctx.author.id})")
+
+    update_recent_problems(handle, grader, 20, cur)
+
+
+    await ctx.send(f'Connected {handle} on {grader}')
 
 @bot.command()
 async def disconnect(ctx,
@@ -70,94 +62,53 @@ async def disconnect(ctx,
     Disconnect handle from grader from solved problem notifications
     '''
 
-    if grader == "codeforces" or grader == "leetcode":
-        if saved_last_problems[grader].pop(handle, None):
-            if handle_to_user[grader].pop(handle, None):
-                save_pickle(saved_last_problems, SAVED_LAST_PROBLEMS_PATH)
-                save_pickle(handle_to_user, HANDLE_TO_USER_PATH)
-
-                await ctx.send(f'Unconnected {handle} on {grader}')
-            else:
-                await ctx.send(f'Erorr disconnecting {handle}, database may be in a bad state')
-        else:
-            await ctx.send(f'{handle} is not connected to {grader}')
-    else:
+    if grader != "codeforces" and grader != "leetcode":
         await ctx.send(f'Must disconnect from a valid grader')
+        return
 
-@bot.command(hidden=True)
-async def sendstate(ctx):
-    await bot.admin_user.send('handle_to_user: ' + str(handle_to_user) + '\n' + 
-                              'saved_last_problems: ' + str(saved_last_problems) + '\n' + 
-                              'available_graders: ' + str(available_graders) + '\n' + 
-                              'available_handles: ' + str(available_handles))
+    existing_users = cur.execute(f"SELECT * FROM users WHERE grader='{grader}' AND handle='{handle}'")
 
-def get_recent_problem(handle, grader):
-    if grader == 'codeforces':
-        return get_recent_problem_codeforces(handle)
-    elif grader == 'leetcode':
-        return get_recent_problem_leetcode(handle)
+    if existing_users.fetchone() is None:
+        await ctx.send(f'User with handle {handle} on {grader} does not exist.')
+        return
 
-def recent_problem_update(handle, grader):
-    update = None
+    cur.execute(f"""DELETE FROM users
+                    WHERE grader='{grader}' AND
+                    handle='{handle}'""")
 
-    last_problem = get_recent_problem(handle, grader)
+    bot.queries = cur.execute('SELECT handle, grader FROM users').fetchall()
 
-    if last_problem and last_problem.name != saved_last_problems[grader][handle].name and last_problem.ac:
-        saved_last_problems[grader] = saved_last_problems.get(grader, {})
-        saved_last_problems[grader][handle] = last_problem
-        update = last_problem
-        save_pickle(saved_last_problems, SAVED_LAST_PROBLEMS_PATH)
-
-    return update
+    await ctx.send(f'Disconnected {handle} on {grader}')
 
 @tasks.loop(seconds=10)
 async def read_last_problem_loop():
-    global available_handles
-    global available_graders
-
     try:
-        # cycle slowly through graders and handles
-        if available_handles:
-            if not available_graders:
-                handle = available_handles.pop(0)
-                if not available_handles:
-                    available_handles = []
-                    for grader in saved_last_problems:
-                        available_handles += saved_last_problems[grader]
-                    available_handles = list(set(available_handles))
-                handle = available_handles[0]
+        if not bot.queries:
+            bot.queries = cur.execute('SELECT handle, grader FROM users').fetchall()
 
-                available_graders = [grader for grader in saved_last_problems if handle in saved_last_problems[grader]]
+        handle, grader = bot.queries.pop()
 
-            handle = available_handles[0]
-            grader = available_graders[0]
-            available_graders.pop(0)
+        problems = update_recent_problems(handle, grader, 10, cur, get_clist=True)
 
-            problem = recent_problem_update(handle, grader)
+        for problem in problems:
+            problem_text = problem.name
+            difficulty = None
 
-            if problem:
-                if not problem.rating or not problem.url:
-                    get_clist_info(problem)
-                problem_text = problem.name
-                if problem.rating:
-                    lc_rating = rating_cf_to_lc(problem.rating)
-                    problem_text = f'{problem_text} (difficulty: {problem.rating}/{lc_rating})'
-                if problem.url:
-                    problem_text = f'[{problem_text}]({problem.url})'
+            if problem.rating_grader and problem.rating_clist:
+                difficulty = f'dificulty: {problem.rating_grader}/clist: {problem.rating_clist}'
+            else:
+                difficulty = f'difficulty: {problem.rating_grader}' or f'clist difficulty: {problem.rating_clist}'
 
-                await bot.icpc_bot_channel.send(f'<@{handle_to_user[grader][handle]}> solved {problem_text} on {grader}!')
+            if difficulty:
+                problem_text = f'{problem_text} ({difficulty})'
+
+            if problem.url:
+                problem_text = f'[{problem_text}]({problem.url})'
+
+            user_id = cur.execute(f"SELECT discord_id FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
+
+            await bot.icpc_bot_channel.send(f'<@{user_id}> solved {problem_text} on {grader}!')
     except Exception as e:
         await bot.admin_user.send(str(e)) # :(
-
-SAVED_LAST_PROBLEMS_PATH = 'saved_last_problems.pkl'
-HANDLE_TO_USER_PATH = 'handle_to_user.pkl'
-saved_last_problems = load_pickle(SAVED_LAST_PROBLEMS_PATH, { })
-handle_to_user = load_pickle(HANDLE_TO_USER_PATH, { })
-
-available_handles = []
-for grader in saved_last_problems:
-    available_handles += saved_last_problems[grader]
-available_handles = list(set(available_handles))
-available_graders = [grader for grader in saved_last_problems if available_handles[0] in saved_last_problems[grader]]
 
 bot.run(os.getenv('DISCORD_API_KEY'))

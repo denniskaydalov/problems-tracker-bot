@@ -9,41 +9,45 @@ class Problem:
     ac : bool
     grader : str
     url : str = None
-    rating : int = None
+    rating_grader : str = None
+    rating_clist : int = None
 
-def get_recent_problem_codeforces(handle):
+def get_recent_problem_codeforces(handle, count):
     URL = 'https://codeforces.com/api/user.status'
     params = { 'handle':handle,
                'from':1,
-               'count':1 }
+               'count':count }
     try:
         print('getting_request codeforces', handle)
         response = requests.get(url = URL, params = params, timeout=10)
         print('got request codeforces', handle, response.json())
 
-        recent_problem = response.json()['result']
+        recent_problems = response.json()['result']
 
-        if not recent_problem:
+        if not recent_problems:
             return None
         
-        recent_problem = recent_problem[0]
-    
-        if 'contestId' in recent_problem['problem']:
-            contest_id = recent_problem['problem']['contestId']
-            if contest_id >= 100000:  # gym problem
-                problem_url = f"https://codeforces.com/gym/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
+        problems = []
+        for problem in recent_problems:
+            if 'contestId' in problem['problem']:
+                contest_id = problem['problem']['contestId']
+                if contest_id >= 100000:  # gym problem
+                    problem_url = f"https://codeforces.com/gym/{problem['problem']['contestId']}/problem/{problem['problem']['index']}"
+                else:
+                    problem_url = f"https://codeforces.com/contest/{problem['problem']['contestId']}/problem/{problem['problem']['index']}"
+            elif 'problemsetName' in problem['problem']:
+                problem_url = f"https://codeforces.com/problemsets/{problem['problem']['problemsetName']}/problem/99999/{problem['problem']['index']}"
             else:
-                problem_url = f"https://codeforces.com/contest/{recent_problem['problem']['contestId']}/problem/{recent_problem['problem']['index']}"
-        elif 'problemsetName' in recent_problem['problem']:
-            problem_url = f"https://codeforces.com/problemsets/{recent_problem['problem']['problemsetName']}/problem/99999/{recent_problem['problem']['index']}"
-        else:
-            problem_url = None
+                problem_url = None
 
-        return Problem(name = recent_problem['problem']['name'],
-                      timestamp = recent_problem['creationTimeSeconds'],
-                      ac = recent_problem['verdict'] == 'OK',
-                      url = problem_url,
-                      grader='codeforces')
+            problems.append(Problem(name = problem['problem']['name'],
+                          timestamp = problem['creationTimeSeconds'],
+                          ac = problem['verdict'] == 'OK',
+                          url = problem_url,
+                          grader='codeforces',
+                          rating_grader=problem['problem']['rating']))
+
+        return problems
     except Exception as e:
         print(e)
         return None
@@ -58,7 +62,7 @@ def get_clist_info(problem):
     try:
         print('getting_request clist')
         response = requests.get(url = URL, params = params, timeout=10)
-        print('got request clist', response)
+        print('got request clist', response.json())
 
         response = response.json()['objects']
         
@@ -67,11 +71,11 @@ def get_clist_info(problem):
 
         response = response[0]
 
-        if grader not in response['url']:
+        if (response['url'] and problem.grader not in response['url']) or (response['archive_url'] and problem.grader not in response['archive_url']):
             return None
 
         problem.url = response['archive_url'] or response['url']
-        problem.rating = response['rating']
+        problem.rating_clist = response['rating']
 
         return problem
     except Exception as e:
@@ -79,37 +83,115 @@ def get_clist_info(problem):
 
         return None
 
-def get_recent_problem_leetcode(handle):
-    URL = f'https://leetcode-api-pied.vercel.app/user/{handle}/submissions'
+def get_problem_info_leetcode(title_slug):
+    URL="https://leetcode.com/graphql"
+    QUERY="""
+        {{
+          question(titleSlug: "{0}") {{
+              difficulty
+              topicTags {{
+                name
+                slug
+                translatedName
+            }}
+          }}
+        }}
+    """.format(title_slug)
 
     try:
-        print('getting_request leetcode', handle)
-        response = requests.get(url = URL, params = {'limit': 1}, timeout=10).json()
-        print('got request leetcode', handle, response)
+        print('getting request for leetcode info')
+        response = requests.get(url = URL, json={"query": QUERY}, timeout=10).json()['data']['question']
+        print('got request for leetcode info', response)
 
-        if not response:
-            return None
-
-        response = response[0]
-
-        return Problem(name = response['title'],
-                       timestamp = response['timestamp'],
-                       ac = response['statusDisplay'] == 'Accepted',
-                       url = f"https://leetcode.com/problems/{response['titleSlug']}/",
-                       grader='leetcode')
+        return response
     except Exception as e:
         print(e)
         return None
 
-def rating_cf_to_lc(rating):
-    return (   'Easy' if rating <= 1200 else
-        'Medium' if rating <= 1700 else
-        'Hard' if rating <= 2000 else
-        'Hard' + '+' * ((rating - 2000) // 200 + 1))
+def get_recent_problem_leetcode(handle, count):
+    URL="https://leetcode.com/graphql"
+    QUERY="""
+        {{
+          recentAcSubmissionList(username: "{0}", limit: {1}) {{
+            title
+            titleSlug
+            timestamp
+            statusDisplay
+            lang
+          }}
+        }}
+    """.format(handle, count)
 
-def rating_lc_to_cf(rating):
-    return (800 if rating == 'Easy' else
-            1200 if rating == 'Medium' else
-            1700 if rating == 'Hard' else
-            2000 if rating == 'Hard+' else
-            2000 + (200 * rating.count('+')) - 200)
+    try:
+        print('getting_request leetcode', handle)
+        responses = requests.get(url = URL, json={"query": QUERY}, timeout=10).json()['data']['recentAcSubmissionList']
+        print('got request leetcode', handle, responses)
+
+        if not responses:
+            return None
+
+        problems = []
+
+        for problem in responses:
+            problem_info = get_problem_info_leetcode(problem['titleSlug'])
+
+            problems.append(Problem(name = problem['title'],
+                            timestamp = problem['timestamp'],
+                            ac = problem['statusDisplay'] == 'Accepted',
+                            url = f"https://leetcode.com/problems/{problem['titleSlug']}/",
+                            grader = 'leetcode',
+                            rating_grader = None or (problem_info and problem_info['difficulty'])))
+
+        return problems
+    except Exception as e:
+        print(e)
+        return None
+
+def get_recent_problems(handle, grader, count):
+    if grader == 'codeforces':
+        return get_recent_problem_codeforces(handle, count)
+    elif grader == 'leetcode':
+        return get_recent_problem_leetcode(handle, count)
+
+def update_recent_problems(handle, grader, count, cur, get_clist = False):
+    problems = get_recent_problems(handle, grader, count)
+
+    new_problems = []
+
+    for problem in problems:
+        existing_problem = cur.execute(f"""SELECT * FROM problems 
+                                           JOIN users ON users.user_id=problems.user_id
+                                           WHERE handle='{handle}' AND
+                                           name='{problem.name}' AND
+                                           grader='{grader}'""")
+
+        if existing_problem.fetchone() is None:
+            if get_clist:
+                get_clist_info(problem)
+
+            user_id = cur.execute(f"SELECT * FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
+
+            cur.execute(f"""INSERT INTO problems (user_id, name, timestamp)
+                          VALUES ({user_id}, '{problem.name}', {problem.timestamp})""")
+
+            if problem.rating_grader:
+                cur.execute(f"""UPDATE problems 
+                                SET rating_grader='{problem.rating_grader}'
+                                WHERE user_id={user_id} AND
+                                name='{problem.name}'""")
+
+            if problem.rating_clist:
+                cur.execute(f"""UPDATE problems 
+                                SET rating_clist={problem.rating_clist}
+                                WHERE user_id={user_id} AND
+                                name='{problem.name}'""")
+
+            if problem.url:
+                cur.execute(f"""UPDATE problems 
+                                SET url='{problem.url}'
+                                WHERE user_id={user_id} AND
+                                name='{problem.name}'""")
+
+            new_problems.append(problem)
+
+    return new_problems
