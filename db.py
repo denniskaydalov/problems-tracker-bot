@@ -14,7 +14,7 @@ def load_pickle(filepath, object_default):
     return obj
 handle_to_user = load_pickle('handle_to_user.pkl', { })
 
-con = sqlite3.connect("data.sqlite3", autocommit=True)
+con = sqlite3.connect("data.sqlite3", isolation_level=None)
 cur = con.cursor()
 
 cur.execute("""CREATE TABLE IF NOT EXISTS users(

@@ -12,7 +12,7 @@ bot = commands.Bot(command_prefix='!',
                    intents=discord.Intents.all(), 
                    help_command=commands.DefaultHelpCommand(no_category = 'Commands'))
 
-con = sqlite3.connect("data.sqlite3", autocommit=True)
+con = sqlite3.connect("data.sqlite3", isolation_level=None)
 cur = con.cursor()
 
 @bot.event
