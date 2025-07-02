@@ -162,11 +162,10 @@ def update_recent_problems(handle, grader, count, cur, get_clist = False):
         return []
 
     for problem in problems:
-        existing_problem = cur.execute(f"""SELECT * FROM problems 
+        existing_problem = cur.execute(""" SELECT * FROM problems 
                                            JOIN users ON users.user_id=problems.user_id
-                                           WHERE handle='{handle}' AND
-                                           name='{problem.name}' AND
-                                           grader='{grader}'""")
+                                           WHERE handle=? AND name=? AND grader=?
+                                        """, (handle, problem.name, grader))
 
         if existing_problem.fetchone() is None:
             if get_clist:
@@ -190,10 +189,10 @@ def update_recent_problems(handle, grader, count, cur, get_clist = False):
                                 name='{problem.name}'""")
 
             if problem.url:
-                cur.execute(f"""UPDATE problems 
-                                SET url='{problem.url}'
-                                WHERE user_id={user_id} AND
-                                name='{problem.name}'""")
+                cur.execute(""" UPDATE problems 
+                                SET url=?
+                                WHERE user_id=? AND name=?
+                            """, (problem.url, user_id, problem.name))
 
             new_problems.append(problem)
 
