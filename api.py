@@ -177,16 +177,18 @@ def update_recent_problems(handle, grader, count, cur, get_clist = False):
                            VALUES (?, ?, ?)""", (user_id, problem.name, problem.timestamp))
 
             if problem.rating_grader:
-                cur.execute(f"""UPDATE problems 
-                                SET rating_grader='{problem.rating_grader}'
-                                WHERE user_id={user_id} AND
-                                name='{problem.name}'""")
+                cur.execute("""
+                    UPDATE problems 
+                    SET rating_grader=?
+                    WHERE user_id=? AND name=?
+                """, (problem.rating_grader, user_id, problem.name))
 
             if problem.rating_clist:
-                cur.execute(f"""UPDATE problems 
-                                SET rating_clist={problem.rating_clist}
-                                WHERE user_id={user_id} AND
-                                name='{problem.name}'""")
+                cur.execute("""
+                    UPDATE problems 
+                    SET rating_clist=?
+                    WHERE user_id=? AND name=?
+                """, (problem.rating_clist, user_id, problem.name))
 
             if problem.url:
                 cur.execute(""" UPDATE problems 
