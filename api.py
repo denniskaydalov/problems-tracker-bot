@@ -173,8 +173,8 @@ def update_recent_problems(handle, grader, count, cur, get_clist = False):
 
             user_id = cur.execute(f"SELECT * FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
 
-            cur.execute(f"""INSERT INTO problems (user_id, name, timestamp)
-                          VALUES ({user_id}, '{problem.name}', {problem.timestamp})""")
+            cur.execute("""INSERT INTO problems (user_id, name, timestamp)
+                           VALUES (?, ?, ?)""", (user_id, problem.name, problem.timestamp))
 
             if problem.rating_grader:
                 cur.execute(f"""UPDATE problems 
