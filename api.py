@@ -45,7 +45,7 @@ def get_recent_problem_codeforces(handle, count):
                           ac = problem['verdict'] == 'OK',
                           url = problem_url,
                           grader='codeforces',
-                          rating_grader=problem['problem']['points']))
+                          rating_grader=(problem['problem'].get('points', None) or problem['problem'].get('rating', None))))
 
         return problems
     except Exception as e:
