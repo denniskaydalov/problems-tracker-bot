@@ -79,6 +79,15 @@ async def disconnect(ctx,
     bot.queries = cur.execute('SELECT handle, grader FROM users').fetchall()
 
     await ctx.send(f'Disconnected {handle} on {grader}')
+    
+# @bot.command()
+# async def connect():
+    # '''
+    # Get weekly problems solved overview
+    # '''
+
+    # pass
+
 
 @tasks.loop(seconds=10)
 async def read_last_problem_loop():
@@ -89,6 +98,11 @@ async def read_last_problem_loop():
         handle, grader = bot.queries.pop()
 
         problems = update_recent_problems(handle, grader, 10, cur, get_clist=True)
+
+        if len(problems) > 4:
+            await bot.admin_user.send(str(e)) # :(
+            return
+            
 
         for problem in problems:
             problem_text = problem.name
