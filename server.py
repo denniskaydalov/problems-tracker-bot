@@ -99,10 +99,9 @@ async def read_last_problem_loop():
 
         problems = update_recent_problems(handle, grader, 10, cur, get_clist=True)
 
-        if len(problems) > 4:
-            await bot.admin_user.send(str(e)) # :(
-            return
-            
+        # if len(problems) > 4:
+            # await bot.admin_user.send(str(e)) # :(
+            # return
 
         for problem in problems:
             problem_text = problem.name
