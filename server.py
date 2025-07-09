@@ -4,7 +4,9 @@ import os
 from dotenv import load_dotenv
 from discord.ext import tasks, commands
 from api import update_recent_problems
+import datetime
 import sqlite3
+import bar
 
 load_dotenv()
 
@@ -80,14 +82,22 @@ async def disconnect(ctx,
 
     await ctx.send(f'Disconnected {handle} on {grader}')
     
-# @bot.command()
-# async def connect():
-    # '''
-    # Get weekly problems solved overview
-    # '''
+@bot.command()
+async def weekly(ctx):
+    '''
+    Get weekly problems solved overview
+    '''
 
-    # pass
-
+    day_of_week = datetime.datetime.today().weekday() # monday is 0
+    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    data = []
+    for i in range(day_of_week + 1):
+        data.append((days[i], cur.execute(f"""SELECT count(*) FROM problems 
+                                    JOIN users ON problems.user_id=users.user_id
+                                    WHERE discord_id={ctx.author.id}
+                                    AND timestamp >= strftime('%s', 'now', 'localtime', 'start of day', 'weekday 0', '{-7 + i + 1} days', '+4 hours')
+                                    AND timestamp < strftime('%s', 'now', 'localtime', 'start of day', 'weekday 0', '{-7 + i + 2} days', '+4 hours')""").fetchone()[0]))
+    await ctx.send(f'```        Weekly Overview\n{"―"*30}\n{bar.draw(data)}\n```')
 
 @tasks.loop(seconds=10)
 async def read_last_problem_loop():
