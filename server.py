@@ -83,10 +83,13 @@ async def disconnect(ctx,
     await ctx.send(f'Disconnected {handle} on {grader}')
     
 @bot.command()
-async def weekly(ctx):
+async def weekly(ctx, user : discord.Member = commands.parameter(description="Get weekly problems overview of another user", default=None)):
     '''
     Get weekly problems solved overview
     '''
+
+    if user is None:
+        user = ctx.author
 
     day_of_week = datetime.datetime.today().weekday() # monday is 0
     days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -94,7 +97,7 @@ async def weekly(ctx):
     for i in range(day_of_week + 1):
         data.append((days[i], cur.execute(f"""SELECT count(*) FROM problems 
                                     JOIN users ON problems.user_id=users.user_id
-                                    WHERE discord_id={ctx.author.id}
+                                    WHERE discord_id={user.id}
                                     AND timestamp >= strftime('%s', 'now', 'localtime', 'start of day', 'weekday 0', '{-7 + i + 1} days', '+4 hours')
                                     AND timestamp < strftime('%s', 'now', 'localtime', 'start of day', 'weekday 0', '{-7 + i + 2} days', '+4 hours')""").fetchone()[0]))
     await ctx.send(f'```        Weekly Overview\n{"―"*30}\n{bar.draw(data)}\n```')
