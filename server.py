@@ -7,6 +7,7 @@ from api import update_recent_problems
 import datetime
 import sqlite3
 import bar
+import pytz
 
 load_dotenv()
 
@@ -91,7 +92,7 @@ async def weekly(ctx, user : discord.Member = commands.parameter(description="Ge
     if user is None:
         user = ctx.author
 
-    day_of_week = datetime.datetime.today().weekday() # monday is 0
+    day_of_week = datetime.datetime.now(pytz.timezone("US/Eastern")).weekday() # monday is 0
     days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     data = []
     for i in range(day_of_week + 1):
