@@ -82,25 +82,42 @@ async def disconnect(ctx,
     bot.queries = cur.execute('SELECT handle, grader FROM users').fetchall()
 
     await ctx.send(f'Disconnected {handle} on {grader}')
-    
+
 @bot.command()
 async def weekly(ctx, user : discord.Member = commands.parameter(description="Get weekly problems overview of another user", default=None)):
     '''
     Get weekly problems solved overview
     '''
 
+    import datetime, pytz
+
     if user is None:
         user = ctx.author
 
-    day_of_week = datetime.datetime.now(pytz.timezone("US/Eastern")).weekday() # monday is 0
+    tz = pytz.timezone("US/Eastern")
+    now = datetime.datetime.now(tz)
+    monday = now - datetime.timedelta(days=now.weekday())  # This week's Monday
+    monday = datetime.datetime.combine(monday.date(), datetime.time(0, 0))
+    monday = tz.localize(monday)
+
     days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     data = []
-    for i in range(day_of_week + 1):
-        data.append((days[i], cur.execute(f"""SELECT count(*) FROM problems 
-                                    JOIN users ON problems.user_id=users.user_id
-                                    WHERE discord_id={user.id}
-                                    AND timestamp >= strftime('%s', 'now', 'localtime', 'start of day', 'weekday 0', '{-7 + i + 1} days', '+4 hours')
-                                    AND timestamp < strftime('%s', 'now', 'localtime', 'start of day', 'weekday 0', '{-7 + i + 2} days', '+4 hours')""").fetchone()[0]))
+
+    for i in range(now.weekday() + 1):  # Only up to today (e.g. Sunday = index 6)
+        start_dt = monday + datetime.timedelta(days=i)
+        end_dt = start_dt + datetime.timedelta(days=1)
+
+        start_ts = int(start_dt.timestamp())
+        end_ts = int(end_dt.timestamp())
+
+        count = cur.execute("""
+            SELECT count(*) FROM problems 
+            JOIN users ON problems.user_id = users.user_id
+            WHERE discord_id = ? AND timestamp >= ? AND timestamp < ?
+        """, (user.id, start_ts, end_ts)).fetchone()[0]
+
+        data.append((days[i], count))
+
     await ctx.send(f'```        Weekly Overview\n{"―"*30}\n{bar.draw(data)}\n```')
 
 @tasks.loop(seconds=10)
