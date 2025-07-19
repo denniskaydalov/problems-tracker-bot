@@ -40,12 +40,13 @@ def get_recent_problem_codeforces(handle, count):
             else:
                 problem_url = None
 
-            problems.append(Problem(name = problem['problem']['name'],
-                          timestamp = problem['creationTimeSeconds'],
-                          ac = problem['verdict'] == 'OK',
-                          url = problem_url,
-                          grader='codeforces',
-                          rating_grader=(problem['problem'].get('points', None) or problem['problem'].get('rating', None))))
+            if problem['verdict'] == 'OK':
+                problems.append(Problem(name = problem['problem']['name'],
+                              timestamp = problem['creationTimeSeconds'],
+                              ac = problem['verdict'] == 'OK',
+                              url = problem_url,
+                              grader='codeforces',
+                              rating_grader=(problem['problem'].get('points', None) or problem['problem'].get('rating', None))))
 
         return problems
     except Exception as e:
