@@ -89,8 +89,6 @@ async def weekly(ctx, user : discord.Member = commands.parameter(description="Ge
     Get weekly problems solved overview
     '''
 
-    import datetime, pytz
-
     if user is None:
         user = ctx.author
 
@@ -147,7 +145,7 @@ async def read_last_problem_loop():
                 problem_text = f'{problem_text} ({difficulty})'
 
             if problem.url:
-                problem_text = f'[{problem_text}]({problem.url})'
+                problem_text = f'[{problem_text}](<{problem.url}>)'
 
             user_id = cur.execute(f"SELECT discord_id FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
 
