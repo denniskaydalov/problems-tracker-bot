@@ -83,10 +83,19 @@ async def disconnect(ctx,
 
     await ctx.send(f'Disconnected {handle} on {grader}')
 
+
 @bot.command()
-async def weekly(ctx, user : discord.Member = commands.parameter(description="Get weekly problems overview of another user", default=None)):
+async def weekly(
+    ctx, 
+    offset: int = 0, 
+    user: discord.Member = commands.parameter(
+        description="Get weekly problems overview of another user", 
+        default=None
+    )
+):
     '''
     Get weekly problems solved overview
+    Use `!weekly 0` for this week (default), `!weekly 1` for last week, etc.
     '''
 
     if user is None:
@@ -94,14 +103,17 @@ async def weekly(ctx, user : discord.Member = commands.parameter(description="Ge
 
     tz = pytz.timezone("US/Eastern")
     now = datetime.datetime.now(tz)
-    monday = now - datetime.timedelta(days=now.weekday())  # This week's Monday
+
+    monday = now - datetime.timedelta(days=now.weekday(), weeks=offset)
     monday = datetime.datetime.combine(monday.date(), datetime.time(0, 0))
     monday = tz.localize(monday)
+
+    week_end = monday + datetime.timedelta(days=7)
 
     days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     data = []
 
-    for i in range(now.weekday() + 1):  # Only up to today (e.g. Sunday = index 6)
+    for i in range(7):
         start_dt = monday + datetime.timedelta(days=i)
         end_dt = start_dt + datetime.timedelta(days=1)
 
@@ -116,7 +128,12 @@ async def weekly(ctx, user : discord.Member = commands.parameter(description="Ge
 
         data.append((days[i], count))
 
-    await ctx.send(f'```        Weekly Overview\n{"―"*30}\n{bar.draw(data)}\n```')
+    ago_text = "(this week)" if offset == 0 else f"({offset} week{'s' if offset > 1 else ''} ago)"
+
+    await ctx.send(
+        f'```        Weekly Overview {ago_text}\n{"―"*30}\n{bar.draw(data)}\n```'
+    )
+
 
 @tasks.loop(seconds=10)
 async def read_last_problem_loop():
