@@ -104,6 +104,8 @@ async def weekly(
     tz = pytz.timezone("US/Eastern")
     now = datetime.datetime.now(tz)
 
+    offset = max(offset, 0)
+
     monday = now - datetime.timedelta(days=now.weekday(), weeks=offset)
     monday = datetime.datetime.combine(monday.date(), datetime.time(0, 0))
     monday = tz.localize(monday)
