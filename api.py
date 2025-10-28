@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import requests
 import os
+import typing
 
 @dataclass
 class Problem:
@@ -83,6 +84,18 @@ def get_clist_info(problem):
         print(e)
 
         return None
+
+def get_profile_url(grader: typing.Literal['codeforces', 'leetcode'], handle: str) -> str:
+    if handle is None or handle == '':
+        return ''
+
+    match grader:
+        case 'codeforces':
+            return f'https://codeforces.com/profile/{handle}'
+        case 'leetcode':
+            return f'https://leetcode.com/u/{handle}/'
+        case _:
+            return ''
 
 def get_problem_info_leetcode(title_slug):
     URL="https://leetcode.com/graphql"
