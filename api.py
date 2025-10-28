@@ -89,13 +89,11 @@ def get_profile_url(grader: typing.Literal['codeforces', 'leetcode'], handle: st
     if handle is None or handle == '':
         return ''
 
-    match grader:
-        case 'codeforces':
-            return f'https://codeforces.com/profile/{handle}'
-        case 'leetcode':
-            return f'https://leetcode.com/u/{handle}/'
-        case _:
-            return ''
+    if grader == 'codeforces':
+        return f'https://codeforces.com/profile/{handle}'
+    elif grader == 'leetcode':
+        return f'https://leetcode.com/u/{handle}/'
+    return ''
 
 def get_problem_info_leetcode(title_slug):
     URL="https://leetcode.com/graphql"
