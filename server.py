@@ -3,7 +3,7 @@ import time
 import os
 from dotenv import load_dotenv
 from discord.ext import tasks, commands
-from api import update_recent_problems
+from api import update_recent_problems, get_profile_url
 import datetime
 import sqlite3
 import bar
@@ -166,9 +166,11 @@ async def read_last_problem_loop():
             if problem.url:
                 problem_text = f'[{problem_text}](<{problem.url}>)'
 
+            handle_text = f'[{handle}]({handle_url})' if (handle_url := get_profile_url(grader, handle)) else handle
+
             user_id = cur.execute(f"SELECT discord_id FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
 
-            await bot.icpc_bot_channel.send(f'<@{user_id}> solved {problem_text} on {grader}!')
+            await bot.icpc_bot_channel.send(f'<@{user_id}> ({handle_text}) solved {problem_text} on {grader}!')
     except Exception as e:
         await bot.admin_user.send(str(e)) # :(
 
