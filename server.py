@@ -166,7 +166,7 @@ async def read_last_problem_loop():
             if problem.url:
                 problem_text = f'[{problem_text}](<{problem.url}>)'
 
-            handle_text = f'[{handle}]({handle_url})' if (handle_url := get_profile_url(grader, handle)) else handle
+            handle_text = f'[{handle}](<{handle_url}>)' if (handle_url := get_profile_url(grader, handle)) else handle
 
             user_id = cur.execute(f"SELECT discord_id FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
 
