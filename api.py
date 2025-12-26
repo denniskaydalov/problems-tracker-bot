@@ -206,7 +206,7 @@ def get_recent_problem_dmoj(handle, count):
                 view = response.json()["data"]
                 recent_problems = view["objects"] + recent_problems
 
-        recent_problems = recent_problems[-count:]
+        recent_problems = recent_problems[::-1][:count]
 
         if not recent_problems:
             return None
