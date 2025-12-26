@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 import requests
 import os
 import typing
@@ -85,7 +86,7 @@ def get_clist_info(problem):
 
         return None
 
-def get_profile_url(grader: typing.Literal['codeforces', 'leetcode'], handle: str) -> str:
+def get_profile_url(grader: typing.Literal['codeforces', 'leetcode', 'dmoj'], handle: str) -> str:
     if handle is None or handle == '':
         return ''
 
@@ -93,6 +94,8 @@ def get_profile_url(grader: typing.Literal['codeforces', 'leetcode'], handle: st
         return f'https://codeforces.com/profile/{handle}'
     elif grader == 'leetcode':
         return f'https://leetcode.com/u/{handle}/'
+    elif grader == 'dmoj':
+        return f'https://dmoj.ca/user/{handle}'
     return ''
 
 def get_problem_info_leetcode(title_slug):
@@ -159,11 +162,82 @@ def get_recent_problem_leetcode(handle, count):
         print(e)
         return None
 
+def get_problem_info_dmoj(problem):
+    URL = "https://dmoj.ca/api/v2/problem/" + problem
+
+    print("getting request for dmoj info", problem)
+    response = requests.get(url = URL, timeout=10).json()["data"]["object"]
+    print("got request for dmoj info", response)
+
+    return response
+
+def get_recent_problem_dmoj(handle, count):
+    URL = "https://dmoj.ca/api/v2/submissions"
+    params = {
+        "user": handle,
+        "result": "AC",
+        "page": 1,
+    }
+
+    try:
+        print("getting_request dmoj", handle)
+        response = requests.get(url = URL, params = params, timeout=10)
+        print("got request dmoj", handle, response.json())
+
+        view = response.json()["data"]
+        if view["total_pages"] == 1:
+            recent_problems = view["objects"]
+        else:
+            # get last page
+            params["page"] = view["total_pages"]
+            print("getting_request dmoj", handle, "last page", params["page"])
+            response = requests.get(url = URL, params = params, timeout=10)
+            print("got request dmoj", handle, response.json())
+
+            view = response.json()["data"]
+            recent_problems = view["objects"]
+            if len(recent_problems) < count:
+                # get second last page
+                params["page"] -= 1
+                print("getting_request dmoj", handle, "second-last page", params["page"])
+                response = requests.get(url = URL, params = params, timeout=10)
+                print("got request dmoj", handle, response.json())
+
+                view = response.json()["data"]
+                recent_problems = view["objects"] + recent_problems
+
+        recent_problems = recent_problems[-count:]
+
+        if not recent_problems:
+            return None
+
+        problems = []
+
+        for problem in recent_problems:
+            problem_info = get_problem_info_dmoj(problem["problem"])
+
+            if problem["points"] == problem_info["points"]:  # Necessary because DMOJ supports subtasks
+                problems.append(Problem(
+                    name = problem_info["name"],
+                    timestamp = datetime.fromisoformat(problem["date"]).timestamp(),
+                    ac = problem["result"] == "AC",
+                    url = f'https://dmoj.ca/problem/{problem["problem"]}',
+                    grader = "dmoj",
+                    rating_grader = f'{problem["points"]}{"p" if problem_info["partial"] else ""}',
+                ))
+
+        return problems
+    except Exception as e:
+        print(e)
+        return None
+
 def get_recent_problems(handle, grader, count):
     if grader == 'codeforces':
         return get_recent_problem_codeforces(handle, count)
     elif grader == 'leetcode':
         return get_recent_problem_leetcode(handle, count)
+    elif grader == 'dmoj':
+        return get_recent_problem_dmoj(handle, count)
 
 def update_recent_problems(handle, grader, count, cur, get_clist = False):
     problems = get_recent_problems(handle, grader, count)
