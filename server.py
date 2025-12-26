@@ -30,14 +30,14 @@ async def on_ready():
 
 @bot.command()
 async def connect(ctx,
-                  grader : str = commands.parameter(description="One of supported graders, codeforces or leetcode"),
+                  grader : str = commands.parameter(description="One of supported graders, codeforces leetcode or dmoj"),
                   handle : str = commands.parameter(description="Handle/username on grader")):
     '''
     Connect handle from grader to get solved problem notifications
     '''
 
-    if grader != "codeforces" and grader != "leetcode":
-        await ctx.send(f'Must connect to codeforces or leetcode')
+    if grader not in ("codeforces", "leetcode", "dmoj"):
+        await ctx.send(f'Must connect to codeforces leetcode or dmoj')
         return
 
     if ' ' in handle:
@@ -59,13 +59,13 @@ async def connect(ctx,
 
 @bot.command()
 async def disconnect(ctx,
-                     grader : str = commands.parameter(description="One of supported graders, codeforces or leetcode"),
+                     grader : str = commands.parameter(description="One of supported graders, codeforces leetcode or dmoj"),
                      handle : str = commands.parameter(description="Handle/username on grader")):
     '''
     Disconnect handle from grader from solved problem notifications
     '''
 
-    if grader != "codeforces" and grader != "leetcode":
+    if grader not in ("codeforces", "leetcode", "dmoj"):
         await ctx.send(f'Must disconnect from a valid grader')
         return
 
