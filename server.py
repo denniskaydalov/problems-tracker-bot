@@ -44,13 +44,13 @@ async def connect(ctx,
         await ctx.send(f'Handle cannot have spaces')
         return
 
-    existing_users = cur.execute(f"SELECT * FROM users WHERE grader='{grader}' AND handle='{handle}'")
+    existing_users = cur.execute("SELECT * FROM users WHERE grader=? AND handle=?", (grader, handle))
 
     if existing_users.fetchone() is not None:
         await ctx.send(f'User with handle {handle} on {grader} already exists.')
         return 
 
-    cur.execute(f"INSERT INTO users (handle, grader, discord_id) VALUES ('{handle}', '{grader}', {ctx.author.id})")
+    cur.execute("INSERT INTO users (handle, grader, discord_id) VALUES (?, ?, ?)", (handle, grader, ctx.author.id))
 
     update_recent_problems(handle, grader, 20, cur)
 
@@ -69,15 +69,15 @@ async def disconnect(ctx,
         await ctx.send(f'Must disconnect from a valid grader')
         return
 
-    existing_users = cur.execute(f"SELECT * FROM users WHERE grader='{grader}' AND handle='{handle}'")
+    existing_users = cur.execute("SELECT * FROM users WHERE grader=? AND handle=?", (grader, handle))
 
     if existing_users.fetchone() is None:
         await ctx.send(f'User with handle {handle} on {grader} does not exist.')
         return
 
-    cur.execute(f"""DELETE FROM users
-                    WHERE grader='{grader}' AND
-                    handle='{handle}'""")
+    cur.execute("""DELETE FROM users
+                    WHERE grader=? AND
+                    handle=?""", (grader, handle))
 
     bot.queries = cur.execute('SELECT handle, grader FROM users').fetchall()
 
