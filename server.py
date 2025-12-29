@@ -157,8 +157,10 @@ async def read_last_problem_loop():
 
             if problem.rating_grader and problem.rating_clist:
                 difficulty = f'dificulty: {problem.rating_grader}/clist: {problem.rating_clist}'
-            else:
-                difficulty = f'difficulty: {problem.rating_grader}' or f'clist difficulty: {problem.rating_clist}'
+            elif problem.rating_grader:
+                difficulty = f'difficulty: {problem.rating_grader}'
+            elif problem.rating_clist:
+                difficulty = f'clist difficulty: {problem.rating_clist}'
 
             if difficulty:
                 problem_text = f'{problem_text} ({difficulty})'
