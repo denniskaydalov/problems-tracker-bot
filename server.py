@@ -170,7 +170,8 @@ async def read_last_problem_loop():
 
             user_id = cur.execute(f"SELECT discord_id FROM users WHERE handle='{handle}' AND grader='{grader}'").fetchone()[0]
 
-            await bot.icpc_bot_channel.send(f'<@{user_id}> ({handle_text}) solved {problem_text} on {grader}!')
+            if bot.icpc_bot_channel.guild.get_member(user_id) is not None:
+                await bot.icpc_bot_channel.send(f'<@{user_id}> ({handle_text}) solved {problem_text} on {grader}!')
     except Exception as e:
         await bot.admin_user.send(str(e)) # :(
 
