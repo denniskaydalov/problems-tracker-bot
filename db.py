@@ -34,7 +34,7 @@ cur.execute("""CREATE TABLE IF NOT EXISTS problems(
 
 for grader in handle_to_user:
     for handle in handle_to_user[grader]:
-        cur.execute(f"INSERT INTO users (handle, grader, discord_id) VALUES ('{handle}', '{grader}', {handle_to_user[grader][handle]})")
+        cur.execute("INSERT INTO users (handle, grader, discord_id) VALUES (?, ?, ?)", (handle, grader, handle_to_user[grader][handle]))
 
 for handle, grader in cur.execute('SELECT handle, grader FROM users').fetchall():
     if grader=='codeforces':
