@@ -77,7 +77,7 @@ def get_clist_info(problem):
         if (response['url'] and problem.grader not in response['url']) or (response['archive_url'] and problem.grader not in response['archive_url']):
             return None
 
-        problem.url = response['archive_url'] or response['url']
+        problem.url = response['archive_url'] or response['url'] or problem.url
         problem.rating_clist = response['rating']
 
         return problem
